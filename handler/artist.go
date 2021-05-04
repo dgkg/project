@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -86,6 +87,13 @@ func GetArtist(ctx *gin.Context) {
 		return
 	}
 
+	log.Printf("artist.Relation: %v relation: %v", artist.Relations, relation)
+
+	renderRelation := ""
+	for k, v := range relation.Dateslocations {
+		renderRelation += fmt.Sprintf("%v - %v | ", k, v)
+	}
+
 	ctx.HTML(http.StatusOK, "artist", gin.H{
 		"title":        artist.Name,
 		"image":        artist.Image,
@@ -93,9 +101,9 @@ func GetArtist(ctx *gin.Context) {
 		"members":      artist.Members,
 		"creationDate": artist.Creationdate,
 		"firstAlbum":   artist.Firstalbum,
-		"locations":    location,
-		"concertDates": date,
-		"relations":    relation,
+		"locations":    location.Locations,
+		"concertDates": date.Dates,
+		"relations":    renderRelation,
 	})
 }
 
