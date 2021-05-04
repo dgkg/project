@@ -7,6 +7,7 @@
       display: flex;
       justify-content: center;
       align-items: center;
+      flex-direction: column;
     }
     .box {
 
@@ -21,9 +22,9 @@
       {{range .artists}}
         <div class="box">
           <p>
-            <a href="artists/{{.ID}}"><img src="{{ .Image }}" height="100" width="100" /></a>
-            <a href="artists/{{.ID}}">{{ .Name }}</a>
+            <a href="artists/{{.ID}}"><img src="{{ .Image }}" height="300" width="300" /></a>
             <br>
+            <a href="artists/{{.ID}}">{{ .Name }}</a>
           </p>
         </div>
       {{end}}
