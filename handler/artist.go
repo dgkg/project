@@ -3,6 +3,7 @@ package handler
 import (
 	"encoding/json"
 	"fmt"
+	"html/template"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -87,12 +88,31 @@ func GetArtist(ctx *gin.Context) {
 		return
 	}
 
-	log.Printf("artist.Relation: %v relation: %v", artist.Relations, relation)
-
-	renderRelation := ""
-	for k, v := range relation.Dateslocations {
-		renderRelation += fmt.Sprintf("%v - %v | ", k, v)
+	// render location
+	renderLocation := "<ul>"
+	for _, v := range location.Locations {
+		if len(v) != 0 {
+			renderLocation += "<li>" + v + "</li>"
+		}
 	}
+	renderLocation += "</ul>"
+
+	// render relation
+	renderRelation := "<ul>"
+	for k, v := range relation.Dateslocations {
+		res := ""
+		for i := 0; i < len(v); i++ {
+			if len(v[i]) != 0 {
+				res += v[i] + ", "
+			}
+		}
+		if len(res) != 0 {
+			res = res[:len(res)-2]
+		}
+		res = res
+		renderRelation += fmt.Sprintf("<li>%v - %v </li>", k, res)
+	}
+	renderRelation += "</ul>"
 
 	ctx.HTML(http.StatusOK, "artist", gin.H{
 		"title":        artist.Name,
@@ -101,9 +121,9 @@ func GetArtist(ctx *gin.Context) {
 		"members":      artist.Members,
 		"creationDate": artist.Creationdate,
 		"firstAlbum":   artist.Firstalbum,
-		"locations":    location.Locations,
+		"locations":    template.HTML(renderLocation),
 		"concertDates": date.Dates,
-		"relations":    renderRelation,
+		"relations":    template.HTML(renderRelation),
 	})
 }
 
