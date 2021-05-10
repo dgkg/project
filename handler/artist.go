@@ -7,48 +7,66 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"regexp"
 	"strings"
 
 	"github.com/dgkg/project/model"
-	"github.com/gin-gonic/gin"
 )
 
-func GetAllArtist(ctx *gin.Context) {
+type ServicesHandler struct {
+	tmpl *template.Template
+}
+
+type HMap map[string]interface{}
+
+func New(tmpl *template.Template) *ServicesHandler {
+	return &ServicesHandler{
+		tmpl: tmpl,
+	}
+}
+
+var artistsPaternID = regexp.MustCompile(`artists/([0-9]+)`) //
+var artistsPatern = regexp.MustCompile(`artists`)            //
+
+func (sh *ServicesHandler) Route(w http.ResponseWriter, r *http.Request) {
+	switch {
+	case artistsPaternID.MatchString(r.URL.Path):
+		sh.GetArtist(w, r)
+	case artistsPatern.MatchString(r.URL.Path):
+		sh.GetAllArtist(w, r)
+	default:
+		w.Write([]byte("Unknown Pattern"))
+	}
+}
+
+func (sh *ServicesHandler) GetAllArtist(w http.ResponseWriter, r *http.Request) {
 
 	var listArtists []model.Artist
 	url := "https://groupietrackers.herokuapp.com/api/artists"
 	err := RequestGet(url, &listArtists)
 	if err != nil {
-		log.Println(err)
-		ctx.JSON(http.StatusBadRequest, err)
+		responseError(w, http.StatusBadRequest, err)
 		return
 	}
 
-	contentType := ctx.Request.Header.Get("Content-type")
-	if strings.ContainsAny(contentType, "application/json") {
-		ctx.JSON(http.StatusOK, listArtists)
-		return
-	}
-
-	ctx.HTML(http.StatusOK, "list-artist", gin.H{
+	sh.responseOk(w, "list-artist", HMap{
 		"title":   "List of artists",
 		"artists": listArtists,
 	})
+
 }
 
 const (
 	apiURL = "https://groupietrackers.herokuapp.com/api/artists/"
 )
 
-func GetArtist(ctx *gin.Context) {
+func (sh *ServicesHandler) GetArtist(w http.ResponseWriter, r *http.Request) {
 
-	idstring := ctx.Param("id")
-	url := apiURL + idstring
+	url := apiURL + strings.ReplaceAll(r.URL.Path, "/artists/", "")
 	var artist model.Artist
 	err := RequestGet(url, &artist)
 	if err != nil {
-		log.Println(err)
-		ctx.JSON(http.StatusBadRequest, err)
+		responseError(w, http.StatusBadRequest, err)
 		return
 	}
 
@@ -56,8 +74,7 @@ func GetArtist(ctx *gin.Context) {
 	if len(artist.Locations) != 0 {
 		err = RequestGet(artist.Locations, &location)
 		if err != nil {
-			log.Println(err)
-			ctx.JSON(http.StatusBadRequest, err)
+			responseError(w, http.StatusBadRequest, err)
 			return
 		}
 	}
@@ -66,8 +83,7 @@ func GetArtist(ctx *gin.Context) {
 	if len(artist.Concertdates) != 0 {
 		err = RequestGet(artist.Concertdates, &date)
 		if err != nil {
-			log.Println(err)
-			ctx.JSON(http.StatusBadRequest, err)
+			responseError(w, http.StatusBadRequest, err)
 			return
 		}
 	}
@@ -76,16 +92,9 @@ func GetArtist(ctx *gin.Context) {
 	if len(artist.Relations) != 0 {
 		err = RequestGet(artist.Relations, &relation)
 		if err != nil {
-			log.Println(err)
-			ctx.JSON(http.StatusBadRequest, err)
+			responseError(w, http.StatusBadRequest, err)
 			return
 		}
-	}
-
-	contentType := ctx.Request.Header.Get("Content-type") // header(': application/json; charset=utf-8');
-	if strings.ContainsAny(contentType, "application/json") {
-		ctx.JSON(http.StatusOK, artist)
-		return
 	}
 
 	// render location
@@ -114,7 +123,7 @@ func GetArtist(ctx *gin.Context) {
 	}
 	renderRelation += "</ul>"
 
-	ctx.HTML(http.StatusOK, "artist", gin.H{
+	sh.responseOk(w, "artist", HMap{
 		"title":        artist.Name,
 		"image":        artist.Image,
 		"name":         artist.Name,
@@ -141,4 +150,26 @@ func RequestGet(url string, bind interface{}) error {
 	}
 
 	return json.Unmarshal(data, bind)
+}
+
+func responseError(w http.ResponseWriter, statusCode int, err error) {
+	log.Print(err)
+	data, err := json.Marshal(err)
+	if err != nil {
+		log.Print(err)
+		return
+	}
+	w.Write(data)
+	w.WriteHeader(statusCode)
+}
+
+func (sh *ServicesHandler) responseOk(w http.ResponseWriter, templateName string, payodad interface{}) {
+	w.WriteHeader(http.StatusOK)
+
+	err := sh.tmpl.ExecuteTemplate(w, templateName, payodad)
+	if err != nil {
+		log.Print(err)
+		return
+	}
+	//(wr io.Writer, name string, data interface{})
 }

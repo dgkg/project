@@ -1,15 +1,21 @@
 package main
 
 import (
-	"github.com/gin-gonic/gin"
+	"html/template"
+	"log"
+	"net/http"
 
 	"github.com/dgkg/project/handler"
 )
 
 func main() {
-	r := gin.Default()
-	r.LoadHTMLGlob("templates/*")
-	r.GET("/artists", handler.GetAllArtist)
-	r.GET("/artists/:id", handler.GetArtist)
-	r.Run()
+
+	templates, err := template.ParseGlob("templates/*")
+	if err != nil {
+		panic(err)
+	}
+
+	sh := handler.New(templates)
+	http.HandleFunc("/", sh.Route)
+	log.Fatal(http.ListenAndServe(":8080", nil))
 }
